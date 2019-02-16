@@ -1,0 +1,189 @@
+SEQUENCE callElevator (buttonDirection, presentFloor)
+  CALL activateButton (buttonDirection, presentFloor)
+  CALL unusedElevator (buttonDirection, presentFloor)
+END SEQUENCE
+
+SEQUENCE activateButton (buttonDirection, presentFloor)
+  CALL findButton (buttonDirection, presentFloor) RETURNING Button
+  SET Button Active
+END SEQUENCE
+
+SEQUENCE findButton (buttonDirection, presentFloor)
+  FOR EACH Button IN ButtonsList
+    IF presentFloor = buttonFloor AND buttonDirection = buttonFloorDirection
+      THEN RETURN Button
+    END IF
+  END FOR
+END SEQUENCE
+
+SEQUENCE unusedElevator (buttonDirection, presentFloor)
+  WHILE noElevators
+    FOR EACH elevator IN elevatorsList
+      IF presentFloor = elevatorFloor THEN
+        IF Status IS STOP AND elevatorDirection IS buttonDirection THEN
+          RETURN elevator
+        ELSE IF Status IS Idle THEN
+          RETURN elevator
+        END IF
+      ELSE IF presentFloor > elevatorFloor THEN
+
+        IF Status IS MOVE AND elevatorDirection IS goingUp AND elevatorDirection IS buttonDirection AND CALL nearestElevator (elevatorFloor, presentFloor) RETURNING TRUE THEN
+          RETURN elevator
+        ELSE IF Status IS Idle AND CALL nearestElevator (elevatorFloor, presentFloor) RETURNING TRUE THEN
+          RETURN elevator
+        ELSE IF Status IS STOP AND elevatorDirection IS goingUp AND elevatorDirection IS buttonDirection AND CALL nearestElevator (elevatorFloor, presentFloor) RETURNING TRUE THEN
+          RETURN elevator
+        ELSE IF Status IS MOVE AND elevatorDirection IS goingUp AND elevatorDirection IS buttonDirection THEN
+          RETURN elevator
+        ELSE IF Status IS Idle THEN
+          RETURN elevator
+        ELSE IF Status IS STOP AND elevatorDirection IS goingUp AND elevatorDirection IS buttonDirection THEN
+          RETURN elevator
+        END IF
+      ELSE IF presentFloor < elevatorFloor THEN
+        IF Status IS MOVE AND elevatorDirection IS goingDown AND elevatorDirection IS buttonDirection AND CALL nearestElevator (elevatorFloor, presentFloor) RETURNING TRUE THEN
+          RETURN elevator
+        ELSE IF Status IS Idle AND CALL nearestElevator (elevatorFloor, presentFloor) RETURNING TRUE THEN
+          RETURN elevator
+        ELSE IF Status IS STOP AND elevatorDirection IS goingDown AND elevatorDirection IS buttonDirection AND CALL nearestElevator (elevatorFloor, presentFloor) RETURNING TRUE THEN
+          RETURN elevator
+        ELSE IF Status IS MOVE AND elevatorDirection IS goingDown AND elevatorDirection IS buttonDirection THEN
+          RETURN elevator
+        ELSE IF Status IS Idle THEN
+          RETURN elevator
+        ELSE IF Status IS STOP AND elevatorDirection IS goingDown AND elevatorDirection IS buttonDirection THEN
+          RETURN elevator
+        END IF
+      END IF
+    END FOR
+  END WHILE
+  CALL requestElevator (elevator, presentFloor)
+END SEQUENCE
+
+
+SEQUENCE nearestElevator (elevatorFloor, presentFloor)
+  COMPUTE RefGap = |buttonFloor - elevator1Floor|
+  FOR EACH Elevator IN elevatorsList
+    COMPUTE Gap = |elevator2Floor - Floor|
+    IF RefGap > Gap THEN
+      RETURN False
+    END IF
+  END FOR
+  RETURN True
+END SEQUENCE
+
+
+SEQUENCE requestElevator (elevator, requestFloor, buttonFloorValue)
+  ADD requestFloor TO floorList
+  CALL sortFloorList (floorList, elevatorDirection) RETURNING seperatefloorList
+  SET floorList TO seperatefloorList
+  First Number IN floorList IS nextFloor
+  CALL operateElevator (elevator, floorList)
+END SEQUENCE
+
+
+SEQUENCE sortFloorList (floorList, elevatorDirection)
+  IF elevatorDirection IS goingUp THEN
+    CALCULATE sortFloorList == floorList IN Ascending Order
+  ELSE IF elevatorDirection IS goingDown THEN
+    CALCULATE sortFloorList == floorList IN Descending Order
+  END IF
+END SEQUENCE
+
+
+SEQUENCE operateElevator (elevator, floorList, buttonDirection)
+  READ nextFloor FORM floorList
+  IF floorList IS Empty Elevator.Status IS Idle THEN
+  ELSE IF elevatorFloor = nextFloor AND buttonDirection IS UP THEN
+    Elevator.Status IS STOP goingUp
+    CALL openDoor (elevator)
+    CALL desactivateButton
+    CALL desactivateInsideButton
+  ELSE IF elevatorFloor = nextFloor AND buttonDirection IS DOWN THEN
+    Elevator.Status IS STOP goingDown
+    CALL openDoor (elevator)
+    CALL desactivateButton
+    CALL desactivateInsideButton
+  ELSE IF elevatorFloor > nextFloor THEN
+    Elevator.Status IS MOVE goingDown
+    CALL removeFLoor (elevator)
+  ELSE IF elevatorFloor < nextFloor THEN
+    Elevator.Status IS MOVE goingUp
+    CALL closeDoor (elevator) AND CALL addFloor (Elevator)
+  END IF
+END SEQUENCE
+
+
+SEQUENCE openDoor (Elevator)
+  REPEAT
+    Open
+    INIT Timer TO 5 second
+  UNTIL Door NOT Blocked
+  CALL closeDoor (levator)
+END SEQUENCE
+
+
+SEQUENCE closeDoor (elevator)
+  IF Door START Closing AND NOT Blocked THEN
+    Close
+    CALL operateElevator (elevator, floorList)
+  ELSE
+    CALL openDoor (elevator)
+  END IF
+END SEQUENCE
+
+SEQUENCE desactivateButton (buttonDirection, presentFloor)
+  CALL findButton (buttonDirection, presentFloor) RETURNING Button
+  SET Button Inactive
+END SEQUENCE
+
+SEQUENCE DesactivateInsideButton (presentFloor, elevator)
+  IF elevatorFloor IS presentFloor THEN
+    SET elevatorbuttonFloor Inactive
+  END IF
+END SEQUENCE
+
+SEQUENCE removeFLoor (elevator)
+  REPEAT
+    COMPUTE elevatorFloor - 1
+  UNTIL elevatorFloor = nextFloor
+  CALL operateelevator (elevator, floorList)
+END SEQUENCE
+
+SEQUENCE addFloor (elevator)
+  REPEAT
+    COMPUTE elevatorFloor + 1
+  UNTIL elevatorFloor = nextFloor
+  CALL operateelevator (elevator, floorList)
+END SEQUENCE
+
+SEQUENCE requestFloor(elevator, presentFloor)
+   IF elevatorDirection IS goingUp AND presentFloor > elevatorFloor THEN
+      RETURN requestFloor
+      CALL requestElevator
+      CALL activateInsideButton
+   ELSE IF elevatorDirection IS goingDown AND Floor < elevatorFloor THEN
+      RETURN requestFloor
+      CALL requestElevator
+      CALL activateInsideButton
+   END IF
+END SEQUENCE
+
+SEQUENCE activateInsideButton (elevator, presentFloor)
+  IF Button IS Push THEN
+    SET elevatorButtonFloor Active
+    RETURN buttonFloorValue AS requestFloor
+  END IF
+END SEQUENCE
+
+SEQUENCE doorOpening (elevator)
+  IF openDoorButton IS Press THEN
+    CALL openDoor (elevator)
+  END IF
+END SEQUENCE
+
+SEQUENCE doorClosing (elevator)
+  IF closeDoorButton IS Press THEN
+    CALL closeDoor (elevator)
+  END IF
+END SEQUENCE
